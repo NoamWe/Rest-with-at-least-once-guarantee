@@ -7,14 +7,20 @@ module.exports = {
 
 
     init: () => {
-        db.run(`
-        CREATE TABLE IF NOT EXISTS users(
-            id INTEGER PRIMARY KEY,
-            name TEXT)`);
+        return new Promise((resolve,reject)=>{
+            db.run(`
+            CREATE TABLE IF NOT EXISTS users(
+                id INTEGER PRIMARY KEY,
+                name TEXT)`, function(err){
+                    if(err) {
+                        reject(err) 
+                    }
+                    resolve()
+                });
+        })
     },
 
     insert: (name) => {
-
         return new Promise((resolve, reject) => {
             db.run(`INSERT INTO users(name) VALUES(?)`, name, function (err) {
                 if (err) {
@@ -38,7 +44,18 @@ module.exports = {
             });
         })
     },
+
     close: () => {
-        db.close();
+        return new Promise((resolve, reject) => {
+            db.close(function(err){
+                if (err) {
+                    reject(err)
+                } 
+                console.log('disconnected from SQLite server')
+                resolve();
+            });
+
+        })
+
     }
 }
