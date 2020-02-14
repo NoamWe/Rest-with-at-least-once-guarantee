@@ -15,7 +15,7 @@ module.exports = {
 
     insert: (name) => {
 
-        return new Promise((resolve,reject)=>{
+        return new Promise((resolve, reject) => {
             db.run(`INSERT INTO users(name) VALUES(?)`, name, function (err) {
                 if (err) {
                     reject(err)
@@ -28,17 +28,15 @@ module.exports = {
     },
 
     selectAll: () => {
-        const sql = `SELECT * FROM users`
-
-        db.all(sql, [], (err, rows) => {
-            if (err) {
-                throw err;
-            }
-            rows.forEach((row) => {
-                console.log(row.name);
+        return new Promise((resolve, reject) => {
+            const sql = `SELECT * FROM users`
+            db.all(sql, [], (err, rows) => {
+                if (err) {
+                    reject(err)
+                }
+                resolve(rows)
             });
-        });
-
+        })
     },
     close: () => {
         db.close();

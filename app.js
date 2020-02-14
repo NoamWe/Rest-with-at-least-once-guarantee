@@ -1,49 +1,36 @@
-
+const Bull = require('bull')
+const tasks = new Bull('tasks');
 const dataCache = require('./dataCach')
-const tasksCache = require('./tasksCach')
+const request = require('request');
 const express = require('express')
 const app = express()
 const port = 3000
 
 dataCache.init();
-tasksCache.init();
-// dataCache.insert('noam')
-// dataCache.selectAll();
 
-// tasks.insert('test')
+tasks.process(async (job) => {
+    return sendToApi(job.data);
+});
 
-tasksCache.selectAll().then(tasks => {
+async function sendToApi(job) {
 
-    console.log(tasks)
-    //if we have leftover tasks
+    request('http://www.google.com', function (error, response, body) {
+        console.error('error:', error);
+        console.log('statusCode:', response && response.statusCode);
+    });
+}
 
-    if(Array.isArray && tasks.length !==0){
-        console.log('leftover tasks')
-    }
-    app.get('/:name', (req, res) => {
-
+app.get('/:name', async (req, res) => {
+    try {
         const name = req.params.name
-        dataCache.insert(name)
-            .then((dataId) => {
-                return tasksCache.insert(dataId)
-            })
-            .then((taskId) => {
-                //make api call
-                tasksCache.delete(taskId)
-                //then delete from cache
-            })
-            .finally(() => {
-
-                console.log('tasks: \n' + tasksCache.selectAll())
-                console.log('data' + dataCache.selectAll())
-            })
-        console.log('hello ')
-    })
-
-    app.listen(port, () => console.log(`Example app listening on port ${port}!`))
-
+        const dataId = await dataCache.insert(name)
+        await tasks.add({ dataId, name })
+        const allData = await dataCache.selectAll()
+        console.log(allData)
+        res.sendStatus(200)
+    } catch (error) {
+        res.sendStatus(500)
+    }
 })
-    .catch(e => {
-        console.log(e)
-    })
 
+app.listen(port, () => console.log(`Example app listening on port ${port}!`))
