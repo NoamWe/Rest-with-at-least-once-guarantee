@@ -27,7 +27,7 @@ app.put('/:name', async (req, res) => {
         await sendToAPIAndUpdate({ id, name })
         res.status(200).send("OK!")
     } catch (error) {
-        res.status(500).send("Something went seriously wrong but we will take care of it later")
+        res.status(503).send("Something went seriously wrong but we will take care of it later")
     }
 })
 
