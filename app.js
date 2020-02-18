@@ -2,34 +2,26 @@ require('dotenv').config()
 const Bull = require('bull')
 const tasks = new Bull('tasks', process.env.REDIS);
 const dataCache = require('./dataCach')
-const request = require('request');
 const express = require('express')
 const app = express()
+const router = require('./route/api')
+const {sendToAPIAndUpdate} = require('./utils')
 const port = process.env.PORT
 let server
 
-main().catch(e => {
-    console.log(e)
-})
+main()
 
 async function main() {
-    await dataCache.init()
-    addNonCompletedToTasksQueue()
-    server = app.listen(port, () => console.log(`App listening on port ${port}!`))
+    try {
+        await dataCache.init()
+        addNonCompletedToTasksQueue()
+        server = app.listen(port, () => console.log(`App listening on port ${port}!`))
+    } catch (error) {
+        console.log(`error on loading app: ${error.message}`)
+    }
 }
 
-app.put('/:name', async (req, res) => {
-    try {
-        const name = req.params.name
-        console.log(`received a message with name: ${name}`)
-        const id = await dataCache.insert(name)
-        console.log(`inserted data for message with name: ${name}`)
-        await sendToAPIAndUpdate({ id, name })
-        res.status(200).send("OK!")
-    } catch (error) {
-        res.status(503).send("Something went seriously wrong but we will take care of it later")
-    }
-})
+app.use('/',router)
 
 //get all non completed etries from db and add them to the tasks queue
 async function addNonCompletedToTasksQueue() {
@@ -39,7 +31,10 @@ async function addNonCompletedToTasksQueue() {
         for (const task of nonCompleted) {
             const id = task.id
             const name = task.name
-            await tasks.add({ id, name })
+            await tasks.add({
+                id,
+                name
+            })
         }
     } catch (error) {
         console.log(error)
@@ -56,31 +51,9 @@ tasks.process(async (job) => {
     }
 })
 
-async function sendToAPIAndUpdate(data) {
-    try {
-        await sendToApi(data);
-        console.log(`api call succesful for name: ${data.name}`)
-        await dataCache.update(data.id)
-        console.log(`Finished processing dataId: ${data.id}`)
-    } catch (error) {
-        await tasks.add({ id: data.id, name: data.name })
-        throw error
-    }
-}
 
-function sendToApi(job) {
-    return new Promise((resolve, reject) => {
-        request('http://www.google.com', function (error, response, body) {
-            if (error || response.statusCode != 200) {
-                console.error('error:', error.message);
-                reject(error)
-            } else {
-                console.log('statusCode from external api:', response && response.statusCode);
-                resolve()
-            }
-        });
-    })
-}
+
+
 
 //gracefull shutdown
 const sigs = ['SIGINT', 'SIGTERM', 'SIGQUIT']
